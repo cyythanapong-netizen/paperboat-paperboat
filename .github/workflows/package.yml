@@ -29,6 +29,7 @@ jobs:
           pip install jsonschema tomli
 
       - name: Verify backend layout & manifest
+        id: manifest
         run: |
           python3 -c "
           import tomllib, os
@@ -40,7 +41,16 @@ jobs:
           assert b['language'] == 'python'
           assert os.path.isfile(b['descriptor'])
           assert os.path.isfile(b['run'])
-          print('backend.toml manifest verified successfully.')
+          name = b['name']
+          version = b.get('version', '0.1.0')
+          tag = f'v{version}' if not version.startswith('v') else version
+          gh_out = os.environ.get('GITHUB_OUTPUT')
+          if gh_out:
+              with open(gh_out, 'a') as out:
+                  out.write(f'name={name}\n')
+                  out.write(f'version={version}\n')
+                  out.write(f'tag={tag}\n')
+          print(f'backend.toml verified: {name} v{version} (release tag: {tag})')
           "
 
       - name: Package backend archive (.ppk)
@@ -64,10 +74,14 @@ jobs:
             *.ppk
             checksums.txt
 
-      - name: Publish Release Assets
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Publish GitHub Release
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.manifest.outputs.tag }}
+          name: ${{ steps.manifest.outputs.name }} v${{ steps.manifest.outputs.version }}
+          draft: false
+          prerelease: false
           files: |
             *.ppk
             checksums.txt

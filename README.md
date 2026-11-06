@@ -73,6 +73,11 @@ Extract and verify archive integrity into a destination directory:
 paperboat unpack paperboat-paperboat-0.1.0.ppk --dir ~/.paperboat/backends/paperboat-paperboat-0.1.0
 ```
 
+### 4. Automated Releases
+The GitHub Actions workflow (`.github/workflows/package.yml`) verifies backend layout, builds the `.ppk` archive, and computes SHA-256 checksums on all pull requests and pushes.
+
+When pushing to `main`, the workflow automatically extracts `version` from `backend.toml` and creates a GitHub Release (e.g. `v0.1.0`) attaching `paperboat-paperboat-<version>.ppk` and `checksums.txt` as downloadable release assets.
+
 ---
 
 ## Running Standalone
