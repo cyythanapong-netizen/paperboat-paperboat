@@ -1,4 +1,4 @@
-// Paperboat Voyager: 3D pixel sailing station (Scheme C · Mediterranean Azure)
+// Paperboat: 3D pixel sailing station (Scheme C · Mediterranean Azure)
 "use strict";
 
 (function () {
@@ -51,6 +51,90 @@
     wind: { dir: (315 * Math.PI) / 180, speed: 14.0 },
     chest: { x: 5.5, z: -8.0, collected: false },
   };
+
+  // Helper: Procedural Retro Pixel Textures with Nearest Neighbor Filtering
+  function createPixelTexture(width, height, drawFn, repX = 1, repY = 1) {
+    const cvs = document.createElement("canvas");
+    cvs.width = width;
+    cvs.height = height;
+    const ctx = cvs.getContext("2d");
+    drawFn(ctx, width, height);
+    const tex = new THREE.CanvasTexture(cvs);
+    tex.magFilter = THREE.NearestFilter;
+    tex.minFilter = THREE.NearestFilter;
+    tex.generateMipmaps = false;
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(repX, repY);
+    return tex;
+  }
+
+  // 1. Procedural Pixel Sea Texture
+  const seaTexture = createPixelTexture(32, 32, (ctx, w, h) => {
+    ctx.fillStyle = "#0284c7";
+    ctx.fillRect(0, 0, w, h);
+    const blues = ["#0369a1", "#0284c7", "#0ea5e9", "#075985", "#38bdf8"];
+    for (let y = 0; y < h; y += 2) {
+      for (let x = 0; x < w; x += 2) {
+        const n = Math.sin(x * 0.9) * Math.cos(y * 0.9);
+        const idx = Math.floor(Math.abs(n * 5)) % blues.length;
+        ctx.fillStyle = blues[idx];
+        ctx.fillRect(x, y, 2, 2);
+        if ((x * 5 + y * 11) % 19 === 0) {
+          ctx.fillStyle = "#bae6fd"; // Crisp pixel whitecap fleck
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+  }, 24, 24);
+
+  // 2. Procedural Pixel Sand Texture
+  const sandTexture = createPixelTexture(16, 16, (ctx, w, h) => {
+    ctx.fillStyle = "#fde047";
+    ctx.fillRect(0, 0, w, h);
+    const sands = ["#facc15", "#eab308", "#fde047", "#ca8a04"];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if ((x * 3 + y * 7) % 4 === 0) {
+          ctx.fillStyle = sands[(x + y) % sands.length];
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+  }, 8, 8);
+
+  // 3. Procedural Pixel Stepped Cliff Texture
+  const cliffTexture = createPixelTexture(16, 16, (ctx, w, h) => {
+    ctx.fillStyle = "#b45309";
+    ctx.fillRect(0, 0, w, h);
+    const strata = ["#92400e", "#78350f", "#b45309", "#d97706", "#451a03"];
+    for (let y = 0; y < h; y++) {
+      const band = strata[Math.floor(y / 3) % strata.length];
+      ctx.fillStyle = band;
+      ctx.fillRect(0, y, w, 1);
+      for (let x = 0; x < w; x++) {
+        if ((x * 5 + y * 13) % 7 === 0) {
+          ctx.fillStyle = "#451a03";
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+  }, 6, 6);
+
+  // 4. Procedural Pixel Grass Texture
+  const grassTexture = createPixelTexture(16, 16, (ctx, w, h) => {
+    ctx.fillStyle = "#22c55e";
+    ctx.fillRect(0, 0, w, h);
+    const grasses = ["#16a34a", "#15803d", "#22c55e", "#166534", "#4ade80"];
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if ((x * 7 + y * 5) % 4 === 0) {
+          ctx.fillStyle = grasses[(x * 2 + y) % grasses.length];
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+  }, 8, 8);
 
   // Three.js renderer
   const renderer = new THREE.WebGLRenderer({
@@ -212,10 +296,11 @@
     }
   }
 
-  // --- Water Surface ---
-  const waterGeom = new THREE.PlaneGeometry(70, 70, 52, 52);
+  // --- Water Surface with Procedural Pixel Texture ---
+  const waterGeom = new THREE.PlaneGeometry(80, 80, 64, 64);
   waterGeom.rotateX(-Math.PI / 2);
   const waterMat = new THREE.MeshLambertMaterial({
+    map: seaTexture,
     color: PALETTE.water,
     flatShading: true,
     side: THREE.DoubleSide,
@@ -227,14 +312,46 @@
   const initialWaterY = new Float32Array(waterPosAttr.count);
   for (let i = 0; i < waterPosAttr.count; i++) initialWaterY[i] = waterPosAttr.getY(i);
 
-  // --- Archipelago Islands & Lighthouse ---
+  // --- Multi-Frequency Wave Dynamics ---
+  function getWaveHeight(x, z, time, shipX, shipZ, shipSpeed) {
+    // 1. Primary Wind Swell (NW Northwest wind: direction ~ 315 deg = 5.497 rad)
+    const windAngle = (315 * Math.PI) / 180;
+    const cosW = Math.cos(windAngle);
+    const sinW = Math.sin(windAngle);
+    const d1 = x * cosW + z * sinW;
+    const swell = Math.sin(d1 * 0.38 + time * 2.6) * 0.16;
+
+    // 2. Secondary Cross-Swell (interference chop)
+    const d2 = x * -sinW + z * cosW;
+    const chop = Math.cos(d2 * 0.55 - time * 1.9) * 0.08;
+
+    // 3. High-Frequency Surface Ripple
+    const ripple = Math.sin((x + z) * 1.1 + time * 3.4) * 0.035;
+
+    // 4. Dynamic Boat Wake Ring Disturbance
+    let wake = 0;
+    if (shipX !== undefined && shipZ !== undefined) {
+      const dist = Math.hypot(x - shipX, z - shipZ);
+      if (dist > 0.5 && dist < 6.0) {
+        const wakeFade = 1.0 - dist / 6.0;
+        const spd = shipSpeed !== undefined ? shipSpeed : 9.0;
+        wake = Math.sin(dist * 3.2 - time * 5.0) * wakeFade * 0.10 * Math.min(1.5, spd / 8.0);
+      }
+    }
+
+    // Trochoidal crest sharpening
+    const raw = swell + chop + ripple + wake;
+    return raw > 0 ? Math.pow(raw, 0.9) * 1.15 : raw;
+  }
+
+  // --- Archipelago Islands with Procedural Pixel Land Textures ---
   const islandGroup = new THREE.Group();
   scene.add(islandGroup);
 
-  const grassMat = new THREE.MeshLambertMaterial({ color: PALETTE.grass, flatShading: true });
-  const grassDarkMat = new THREE.MeshLambertMaterial({ color: PALETTE.grassDark, flatShading: true });
-  const cliffMat = new THREE.MeshLambertMaterial({ color: PALETTE.cliff, flatShading: true });
-  const sandMat = new THREE.MeshLambertMaterial({ color: PALETTE.sand, flatShading: true });
+  const grassMat = new THREE.MeshLambertMaterial({ map: grassTexture, color: PALETTE.grass, flatShading: true });
+  const grassDarkMat = new THREE.MeshLambertMaterial({ map: grassTexture, color: PALETTE.grassDark, flatShading: true });
+  const cliffMat = new THREE.MeshLambertMaterial({ map: cliffTexture, color: PALETTE.cliff, flatShading: true });
+  const sandMat = new THREE.MeshLambertMaterial({ map: sandTexture, color: PALETTE.sand, flatShading: true });
   const foamMat = new THREE.MeshBasicMaterial({ color: 0xe2e8f0 });
   const woodMat = new THREE.MeshLambertMaterial({ color: 0x78350f, flatShading: true });
   const lightTowerMat = new THREE.MeshLambertMaterial({ color: PALETTE.lighthouse, flatShading: true });
@@ -358,9 +475,15 @@
         if (m.text.includes("grounded") || m.text.includes("crashed")) {
           statusBadge.textContent = "Grounded";
           statusBadge.className = "crashed";
-        } else if (m.text.includes("retrieved") || m.text.includes("completed")) {
-          statusBadge.textContent = "Retrieved!";
+        } else if (m.text.includes("retrieved")) {
+          statusBadge.textContent = "Loot Collected!";
           statusBadge.className = "won";
+          setTimeout(() => {
+            if (state.running) {
+              statusBadge.textContent = "Running";
+              statusBadge.className = "running";
+            }
+          }, 2000);
         }
       })
       .on("run.finished", (m) => {
@@ -397,6 +520,12 @@
         if (shipEnt.coins !== undefined) state.ship.coins = shipEnt.coins;
         if (shipEnt.chest_collected !== undefined) state.ship.chestCollected = shipEnt.chest_collected;
       }
+      const chestEnt = paperboat.entities.get("chest");
+      if (chestEnt && chestEnt.pos) {
+        state.chest.x = chestEnt.pos[0];
+        state.chest.z = chestEnt.pos[2];
+        chestGroup.position.set(state.chest.x, 0.45, state.chest.z);
+      }
     }
 
     // Telemetry updates
@@ -405,15 +534,34 @@
     if (sailThumb) sailThumb.style.top = `${((state.ship.sailAngle - 5) / 80) * 100}%`;
     if (helmWheel) helmWheel.style.transform = `rotate(${state.ship.rudder * 140}deg)`;
     if (lootCoins) lootCoins.textContent = state.ship.coins;
-    if (lootChest) lootChest.textContent = state.ship.chestCollected ? "1" : "0";
+    if (lootChest) lootChest.textContent = Math.floor(state.ship.coins / 25);
     if (windNeedleBox) windNeedleBox.style.transform = `rotate(${(state.wind.dir * 180) / Math.PI}deg)`;
 
-    // Dynamic Buoyancy (NEVER clips water!)
-    const waveHeight = Math.sin(state.ship.x * 0.4 + state.time * 2.2) * 0.12 + Math.cos(state.ship.z * 0.4 + state.time * 1.8) * 0.08;
-    paperboatGroup.position.set(state.ship.x, waveHeight + 0.55, state.ship.z);
+    // Dynamic Multi-Frequency Wave Vertices with Trochoidal Wake
+    for (let i = 0; i < waterPosAttr.count; i++) {
+      const vx = waterPosAttr.getX(i);
+      const vz = waterPosAttr.getZ(i);
+      const waveY = getWaveHeight(vx, vz, state.time, state.ship.x, state.ship.z, state.ship.speed);
+      waterPosAttr.setY(i, initialWaterY[i] + waveY);
+    }
+    waterPosAttr.needsUpdate = true;
+    waterGeom.computeVertexNormals();
+
+    // Authentic Dynamic Buoyancy & Wave Crest Pitching
+    const bowX = state.ship.x + Math.cos(state.ship.heading) * 1.6;
+    const bowZ = state.ship.z + Math.sin(state.ship.heading) * 1.6;
+    const sternX = state.ship.x - Math.cos(state.ship.heading) * 1.6;
+    const sternZ = state.ship.z - Math.sin(state.ship.heading) * 1.6;
+
+    const bowWave = getWaveHeight(bowX, bowZ, state.time);
+    const sternWave = getWaveHeight(sternX, sternZ, state.time);
+    const midWave = getWaveHeight(state.ship.x, state.ship.z, state.time);
+    const pitch = Math.atan2(bowWave - sternWave, 3.2);
+
+    paperboatGroup.position.set(state.ship.x, midWave + 0.55, state.ship.z);
     paperboatGroup.rotation.y = -state.ship.heading + Math.PI / 2;
     paperboatGroup.rotation.z = (state.ship.heel * Math.PI) / 180;
-    paperboatGroup.rotation.x = Math.sin(state.time * 3.0) * 0.04;
+    paperboatGroup.rotation.x = -pitch;
 
     // Ripple dot animation under keel
     for (let k = 0; k < rippleDots.length; k++) {
@@ -426,22 +574,10 @@
       }
     }
 
-    // Water wave vertices
-    for (let i = 0; i < waterPosAttr.count; i++) {
-      const vx = waterPosAttr.getX(i);
-      const vz = waterPosAttr.getZ(i);
-      const waveY = Math.sin(vx * 0.4 + state.time * 2.2) * 0.12 + Math.cos(vz * 0.4 + state.time * 1.8) * 0.08;
-      waterPosAttr.setY(i, initialWaterY[i] + waveY);
-    }
-    waterPosAttr.needsUpdate = true;
-    waterGeom.computeVertexNormals();
-
-    // Chest bobbing
-    chestGroup.position.y = 0.35 + Math.sin(state.time * 3) * 0.08;
+    // Chest bobbing on waves
+    const chestWave = getWaveHeight(state.chest.x, state.chest.z, state.time);
+    chestGroup.position.y = 0.40 + chestWave + Math.sin(state.time * 2.8) * 0.05;
     chestGroup.rotation.y = state.time * 0.5;
-    if (state.ship.chestCollected) {
-      chestGroup.visible = false;
-    }
 
     renderer.render(scene, camera);
     requestAnimationFrame(animate);

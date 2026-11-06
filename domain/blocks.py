@@ -1,4 +1,4 @@
-"""Blocks for Paperboat Voyager: sensors/probes, actuators/sources, and tack logic."""
+"""Blocks for Paperboat: sensors/probes, actuators/sources, and tack logic."""
 
 import math
 import paperboat

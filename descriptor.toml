@@ -1,5 +1,5 @@
-# Paperboat Voyager: 3D pixel sailing showcase on Scheme C Mediterranean Azure.
-domain = "voyager"
+# Paperboat: 3D pixel sailing showcase on Scheme C Mediterranean Azure.
+domain = "paperboat"
 
 # Reusable toolkit package imports
 toolkit = ["__all__"]

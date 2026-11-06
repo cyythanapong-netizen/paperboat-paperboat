@@ -2,9 +2,10 @@
   "$comment": "What `--run` (the starter, headless) must produce; checked by protocol/golden.py.",
   "status": "done",
   "run": "server.py",
+  "duration": 35.0,
   "signals": {
     "speed-gauge": [
-      4.51,
+      1.0,
       0.5
     ]
   },

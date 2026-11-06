@@ -1,22 +1,24 @@
-# Paperboat Voyager (`paperboat-paperboat`)
+# Paperboat (`paperboat-paperboat`)
 
-**Paperboat Voyager** is the flagship brand showcase for Paperboat: a 3D pixel sailing game and domain service featuring an autonomous upwind tacking controller, aerodynamic sail trimming, stepped voxel archipelago terrain, and authentic origami papercraft aesthetics.
+**Paperboat** is the flagship brand showcase for Paperboat: a 3D pixel sailing game and domain service featuring an autonomous upwind tacking controller, aerodynamic sail trimming, stepped voxel archipelago terrain, procedural pixel textures, multi-frequency waves, and authentic origami papercraft aesthetics.
 
 Art Direction: **Scheme C · Mediterranean Azure**
-- **Ocean Water**: Vibrant tropical azure `#0284c7` with animated sine wave crests.
+- **Ocean Water**: Vibrant tropical azure `#0284c7` with procedural pixel textures, multi-frequency trochoidal waves, and dynamic wake.
+- **Pixelated Landscapes**: Procedural pixel textures for sand beaches (`#fde047`), stepped terracotta cliffs (`#b45309`), and lush grass terraces (`#22c55e`).
 - **W2 Ripple Cushion**: Signal orange (`#ff5a1f`) and radiant gold (`#fef08a`) ripple wafers positioned directly beneath the paperboat's keel.
-- **Heroic Scale Origami Boat**: 1.75× scale white origami hull (`#ffffff`) and two-tone folded sail (`#ffffff` / `#cbd5e1`) with dynamic buoyancy that never clips wave troughs.
-- **Archipelago**: Golden sand beaches (`#fde047`), terracotta cliffs (`#b45309`), tropical grass terraces (`#22c55e`), wooden mooring dock, and white origami lighthouse with signal orange bands.
+- **Heroic Scale Origami Boat**: 1.75× scale white origami hull (`#ffffff`) and two-tone folded sail (`#ffffff` / `#cbd5e1`) with dynamic wave pitch and buoyancy that never clips wave troughs.
+- **Archipelago**: Golden sand beaches, terracotta cliffs, tropical grass terraces, wooden mooring dock, and white origami lighthouse with signal orange bands.
 
 ---
 
-## The Challenge: "The Buccaneer's Tacking Run"
+## Endless Exploration: Upwind Tacking Run
 
-A sunken pirate treasure chest lies anchored in a lagoon **dead upwind** ($315^\circ$ NW). A sailing ship cannot sail into the wind's "No-Go Zone" ($\pm 42^\circ$ relative to oncoming wind).
+Sunken pirate treasure chests lie anchored in the lagoon. A sailing ship cannot sail into the wind's "No-Go Zone" ($\pm 42^\circ$ relative to oncoming wind).
 
 The starter flow blocks solve two coupled control problems:
 1. **Aerodynamic Sail Trim Optimizer**: Computes apparent wind angle and trims the sail to $\theta_{\text{sail}} = \frac{1}{2} \theta_{\text{apparent}}$, maximizing aerofoil lift.
 2. **Autonomous Upwind Tacking Controller**: When the target is in the No-Go zone, alternates heading setpoints between $+48^\circ$ (starboard tack) and $-48^\circ$ (port tack), steered by a closed-loop PID controller with ultrasonic shore avoidance.
+3. **Infinite Gameplay**: Collect chests and coins in an endless voyage across the archipelago, with dynamic waypoint respawning and resilient shoreline reef deflection.
 
 ---
 
@@ -36,14 +38,14 @@ paperboat-paperboat/
 │       └── package.yml   # Automated verification & packaging CI
 ├── domain/
 │   ├── __init__.py       # Exports BLOCKS list
-│   ├── plant.py          # VoyagerGame (DomainState): aerodynamics, buoyancy, collision, score
+│   ├── plant.py          # PaperboatGame (DomainState): aerodynamics, buoyancy, collision, score
 │   └── blocks.py         # Wind, Boat, NextTreasure, DepthSounder, TackGenerator, Sail, Rudder
 └── station/
     ├── _static/
     │   └── three.min.js  # Bundled Three.js (r128)
     ├── index.html        # Web station view: loads /paperboat/station.js
     ├── style.css         # Mediterranean Azure styling and HUD overlay
-    └── voyager.js        # Three.js orthographic renderer & paperboat station integration
+    └── paperboat.js      # Three.js orthographic renderer & paperboat station integration
 ```
 
 ---

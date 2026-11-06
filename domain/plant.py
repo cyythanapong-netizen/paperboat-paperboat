@@ -1,4 +1,4 @@
-"""Voyager domain state: 2D sailing aerohydrodynamics, islands, treasure, and entities."""
+"""Paperboat domain state: 2D sailing aerohydrodynamics, islands, treasure, and entities."""
 
 import math
 import random
@@ -8,13 +8,23 @@ WIND_DIR = math.radians(315)  # 315° Northwest
 WIND_SPEED = 14.0             # Knots
 NOGO_BAND = math.radians(42)  # In-Irons threshold
 
+# Sequence of treasure coordinates for endless exploration
+TREASURE_WAYPOINTS = [
+    (5.5, -8.0),
+    (-6.0, 5.0),
+    (3.5, 9.5),
+    (-7.5, -10.0),
+    (8.0, -3.0),
+    (0.0, -12.0),
+]
+
 
 class Island:
     def __init__(self, x: float, z: float, r: float):
         self.x, self.z, self.r = x, z, r
 
 
-class VoyagerGame(DomainState):
+class PaperboatGame(DomainState):
     def __init__(self, rng: random.Random | None = None) -> None:
         self.rng = rng or random.Random(42)
         # Ship state: x (m), z (m), heading (rad), speed (kt), yaw_rate (rad/s), heel (deg)
@@ -30,9 +40,11 @@ class VoyagerGame(DomainState):
         # Environment & targets
         self.wind_dir = WIND_DIR
         self.wind_speed = WIND_SPEED
-        self.chest_x, self.chest_z = 5.5, -8.0
+        self.target_idx = 0
+        self.chest_x, self.chest_z = TREASURE_WAYPOINTS[0]
         self.chest_collected = False
         self.coins_collected = 0
+        self.chests_retrieved = 0
         self.crashed = False
 
         self.islands = [
@@ -62,8 +74,8 @@ class VoyagerGame(DomainState):
                 min_dist = d
         return max(0.0, min_dist)
 
-    def advance(self, dt: float) -> bool:
-        """Advance physics by dt. Returns False if ship crashes into cliffs."""
+    def advance(self, dt: float) -> str | None:
+        """Advance physics by dt. Softly deflects off shoreline reefs; spawns next treasure."""
         app_angle = self.apparent_wind_angle()
         in_irons = abs(app_angle) < NOGO_BAND
 
@@ -83,33 +95,40 @@ class VoyagerGame(DomainState):
         # Dynamic heel roll
         self.heel = math.sin(app_angle) * (self.speed / 10.0) * 12.0
 
-        # Collision check with island rock cores
+        # Island collision deflection: glancing bump rather than game-ending crash
         for isl in self.islands:
-            if math.hypot(self.x - isl.x, self.z - isl.z) < (isl.r - 0.5):
-                self.crashed = True
-                return False
+            dist = math.hypot(self.x - isl.x, self.z - isl.z)
+            if dist < (isl.r - 0.4):
+                angle = math.atan2(self.z - isl.z, self.x - isl.x)
+                self.x = isl.x + math.cos(angle) * (isl.r - 0.3)
+                self.z = isl.z + math.sin(angle) * (isl.r - 0.3)
+                self.heading = angle
+                self.speed = max(1.5, self.speed * 0.5)
+                self.yaw_rate = 0.0
 
-        # Treasure chest collection check
-        if not self.chest_collected and math.hypot(self.x - self.chest_x, self.z - self.chest_z) < 2.2:
+        # Treasure chest collection & infinite respawn loop
+        event = None
+        if math.hypot(self.x - self.chest_x, self.z - self.chest_z) < 2.4:
+            self.chests_retrieved += 1
+            self.coins_collected += 25
             self.chest_collected = True
-            self.coins_collected += 10
+            event = f"treasure retrieved! Mission complete with {self.coins_collected} coins"
+            # Cycle to next endless exploration waypoint
+            self.target_idx = (self.target_idx + 1) % len(TREASURE_WAYPOINTS)
+            self.chest_x, self.chest_z = TREASURE_WAYPOINTS[self.target_idx]
 
-        return True
+        return event
 
     def step(self, ctx) -> str | None:
-        """Engine step hook called every clock step."""
-        if not self.advance(ctx.dt):
-            return f"grounded on island rocks at t = {ctx.t:.1f} s"
-        if self.chest_collected:
-            return f"treasure retrieved! Mission complete with {self.coins_collected} coins"
+        """Engine step hook called every clock step. Infinite gameplay runs indefinitely."""
+        event = self.advance(ctx.dt)
+        if event:
+            ctx.log(event, "info")
+        # Always return None so gameplay proceeds infinitely
         return None
 
     def summary(self) -> str | None:
-        if self.crashed:
-            return "ship grounded on shoreline"
-        if self.chest_collected:
-            return f"treasure retrieved! Mission complete with {self.coins_collected} coins"
-        return f"completed voyage! Coins: {self.coins_collected}, Speed: {self.speed:.1f} kt"
+        return f"endless sailing voyage: Chests: {self.chests_retrieved}, Coins: {self.coins_collected}, Speed: {self.speed:.1f} kt"
 
     def entities(self) -> list[dict]:
         """Full scene entity list for Station view."""
@@ -124,5 +143,6 @@ class VoyagerGame(DomainState):
         return [
             {"id": "ship", "pos": [self.x, 0.45, self.z], "rot": [0, -self.heading, self.heel],
              "speed": self.speed, "sail_angle": self.sail_angle, "rudder": self.rudder,
-             "coins": self.coins_collected, "chest_collected": self.chest_collected}
+             "coins": self.coins_collected, "chest_collected": self.chest_collected},
+            {"id": "chest", "pos": [self.chest_x, 0.35, self.chest_z], "collected": self.chest_collected}
         ]
