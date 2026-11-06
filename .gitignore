@@ -10,4 +10,5 @@ build/
 dist/
 *.egg-info/
 .DS_Store
+*.ppk
 *.paperboat-pkg

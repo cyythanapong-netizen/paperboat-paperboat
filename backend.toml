@@ -7,6 +7,7 @@ language = "python"
 run = "server.py"
 port = 8774
 descriptor = "descriptor.toml"
+toolkits = ["__all__"]
 
 [test]
 golden = "expected.json"

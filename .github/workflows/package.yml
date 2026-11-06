@@ -43,16 +43,16 @@ jobs:
           print('backend.toml manifest verified successfully.')
           "
 
-      - name: Package backend archive (.paperboat-pkg)
+      - name: Package backend archive (.ppk)
         run: |
           python3 scripts/package_backend.py pack .
-          ls -la *.paperboat-pkg
-          sha256sum *.paperboat-pkg > checksums.txt
+          ls -la *.ppk
+          sha256sum *.ppk > checksums.txt
           cat checksums.txt
 
       - name: Verify package unpack & integrity
         run: |
-          PKG_FILE=$(ls *.paperboat-pkg | head -n 1)
+          PKG_FILE=$(ls *.ppk | head -n 1)
           python3 scripts/package_backend.py unpack "$PKG_FILE" --dir /tmp/test_unpack
           echo "Verified $PKG_FILE extraction and SHA-256 integrity"
 
@@ -61,7 +61,7 @@ jobs:
         with:
           name: paperboat-package
           path: |
-            *.paperboat-pkg
+            *.ppk
             checksums.txt
 
       - name: Publish Release Assets
@@ -69,7 +69,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            *.paperboat-pkg
+            *.ppk
             checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

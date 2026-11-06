@@ -61,16 +61,16 @@ paperboat check . --fast
 ```
 
 ### 2. Package Backend Archive
-Package into a portable `.paperboat-pkg` archive with SHA-256 integrity digests (stripping build and cache artifacts):
+Package into a portable `.ppk` archive with SHA-256 integrity digests (stripping build and cache artifacts):
 ```bash
 paperboat pack .
 ```
-Produces `paperboat-paperboat-0.1.0.paperboat-pkg`.
+Produces `paperboat-paperboat-0.1.0.ppk`.
 
 ### 3. Unpack and Install
 Extract and verify archive integrity into a destination directory:
 ```bash
-paperboat unpack paperboat-paperboat-0.1.0.paperboat-pkg --dir ~/.paperboat/backends/paperboat-paperboat-0.1.0
+paperboat unpack paperboat-paperboat-0.1.0.ppk --dir ~/.paperboat/backends/paperboat-paperboat-0.1.0
 ```
 
 ---

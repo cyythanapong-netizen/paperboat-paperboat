@@ -2,7 +2,7 @@
 domain = "voyager"
 
 # Reusable toolkit package imports
-import = ["base", "math", "control", "dashboard"]
+toolkit = ["__all__"]
 
 # Webview Station declaration
 [station]
