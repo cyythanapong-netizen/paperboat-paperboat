@@ -1,7 +1,7 @@
 [backend]
 format = 0
 name = "paperboat-paperboat"
-version = "0.2.0"
+version = "0.3.0"
 engine = ">=0.1"
 language = "python"
 run = "server.py"

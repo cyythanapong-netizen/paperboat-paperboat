@@ -12,31 +12,147 @@ page = "station/index.html"
 # Default pre-tuned PID controller
 [[blocks]]
 use = "control/pid"
-defaults = { kp = 2.2, ki = 0.02, kd = 0.5 }
+defaults = { kp = 2.4, ki = 0.01, kd = 0.6 }
 
-# Starter Graph: Closed-Loop Sail Trim & Upwind Tacking Autopilot
+# Interactive Dashboard with multi-tab layout and telemetry
+[dashboard]
+columns = 6
+tabs = ["Helm", "Navigation"]
+
+instruments = [
+  # Helm tab instruments
+  { block = "speed-gauge", size = "compact", at = [0, 1], tab = "Helm" },
+  { block = "sail-disp", size = "compact", at = [1, 1], tab = "Helm" },
+  { block = "rudder-disp", size = "compact", at = [2, 1], tab = "Helm" },
+  { block = "heel-gauge", size = "compact", at = [0, 2], tab = "Helm" },
+  { block = "coins-disp", size = "compact", at = [1, 2], tab = "Helm" },
+  { block = "shore-disp", size = "compact", at = [2, 2], tab = "Helm" },
+  { block = "speed-graph", size = "large", at = [0, 3], tab = "Helm" },
+  { block = "heel-graph", size = "large", at = [2, 3], tab = "Helm" },
+
+  # Navigation tab instruments
+  { block = "target-hdg-disp", size = "compact", at = [0, 1], tab = "Navigation" },
+  { block = "boat-hdg-disp", size = "compact", at = [1, 1], tab = "Navigation" },
+  { block = "dist-disp", size = "compact", at = [2, 1], tab = "Navigation" },
+  { block = "in-nogo-disp", size = "compact", at = [3, 1], tab = "Navigation" },
+  { block = "app-wind-disp", size = "compact", at = [4, 1], tab = "Navigation" },
+  { block = "yaw-rate-disp", size = "compact", at = [5, 1], tab = "Navigation" },
+  { block = "err-graph", size = "large", at = [0, 2], tab = "Navigation" },
+  { block = "rudder-graph", size = "large", at = [2, 2], tab = "Navigation" },
+  { block = "sail-graph", size = "large", at = [4, 2], tab = "Navigation" },
+]
+
+decorations = [
+  { kind = "label", text = "Paperboat · Helm & Rigging Console", style = "heading", at = [0, 0], span = [6, 1], tab = "Helm" },
+  { kind = "section", text = "Vessel Instruments", at = [0, 1], span = [4, 4], tab = "Helm" },
+  { kind = "console", at = [4, 1], span = [2, 4], tab = "Helm" },
+
+  { kind = "label", text = "Paperboat · Autonomous Navigation & Waypoint Telemetry", style = "heading", at = [0, 0], span = [6, 1], tab = "Navigation" },
+  { kind = "section", text = "Autopilot Tracking", at = [0, 1], span = [6, 3], tab = "Navigation" },
+]
+
+# Closed-Loop Sail Aerodynamics & Autonomous Tacking Navigation Flow
 [graph]
 nodes = [
-  { id = "wind-1", type = "wind", pos = [20, 20] },
-  { id = "boat-1", type = "boat", pos = [20, 160] },
-  { id = "sum-app", type = "sum", params = { signs = "+-" }, pos = [220, 20] },
-  { id = "gain-trim", type = "gain", params = { k = 0.5 }, pos = [420, 20] },
-  { id = "sail-1", type = "sail", pos = [620, 20] },
-  { id = "tr-1", type = "treasure", pos = [220, 200] },
-  { id = "tack-1", type = "tack_generator", pos = [420, 200] },
-  { id = "pid-1", type = "pid", pos = [620, 200] },
-  { id = "rudder-1", type = "rudder", pos = [820, 200] },
-  { id = "speed-gauge", type = "display", pos = [220, 360] },
-  { id = "key-left", type = "key", params = { key = "ArrowLeft" }, pos = [420, 360] },
-  { id = "key-right", type = "key", params = { key = "ArrowRight" }, pos = [620, 360] },
+  # Domain Probes
+  { id = "wind-1", type = "wind", pos = [40, 40] },
+  { id = "boat-1", type = "boat", pos = [40, 200] },
+  { id = "tr-1", type = "treasure", pos = [40, 380] },
+  { id = "shore-1", type = "depth_sounder", pos = [40, 540] },
+
+  # Sail Trim Pipeline (Built-in Math Blocks: angle_diff -> absolute -> rad_to_deg -> gain -> clamp)
+  { id = "app-diff", type = "angle_diff", pos = [240, 40] },
+  { id = "app-abs", type = "absolute", pos = [420, 40] },
+  { id = "app-deg", type = "rad_to_deg", pos = [600, 40] },
+  { id = "trim-gain", type = "gain", params = { k = 0.5 }, pos = [780, 40] },
+  { id = "trim-clamp", type = "clamp", params = { min = 10.0, max = 80.0 }, pos = [960, 40] },
+  { id = "sail-1", type = "sail", pos = [1140, 40] },
+
+  # Autopilot Steering Pipeline (Built-in Math & Control Blocks)
+  { id = "tack-1", type = "tack_generator", pos = [260, 380] },
+  { id = "err-diff", type = "angle_diff", pos = [460, 380] },
+  { id = "pid-1", type = "pid", pos = [660, 380] },
+
+  # Manual Steering Controls (Built-in Base & Math Blocks)
+  { id = "key-left", type = "key", params = { key = "ArrowLeft" }, pos = [460, 500] },
+  { id = "key-right", type = "key", params = { key = "ArrowRight" }, pos = [460, 600] },
+  { id = "sum-manual", type = "sum", params = { signs = "+-" }, pos = [660, 540] },
+  { id = "gain-manual", type = "gain", params = { k = 1.0 }, pos = [800, 540] },
+
+  # Rudder Actuation & Limits
+  { id = "sum-rudder", type = "sum", params = { signs = "++" }, pos = [860, 380] },
+  { id = "sat-rudder", type = "saturation", params = { min = -1.0, max = 1.0 }, pos = [1020, 380] },
+  { id = "rudder-1", type = "rudder", pos = [1180, 380] },
+
+  # Dashboard Helm Monitors
+  { id = "speed-gauge", type = "display", pos = [240, 180] },
+  { id = "sail-disp", type = "display", pos = [1140, 120] },
+  { id = "rudder-disp", type = "display", pos = [1180, 440] },
+  { id = "heel-gauge", type = "display", pos = [240, 240] },
+  { id = "coins-disp", type = "display", pos = [240, 300] },
+  { id = "shore-disp", type = "display", pos = [240, 540] },
+  { id = "speed-graph", type = "graph", pos = [420, 180] },
+  { id = "heel-graph", type = "graph", pos = [420, 260] },
+
+  # Dashboard Navigation Monitors
+  { id = "target-hdg-disp", type = "display", pos = [460, 300] },
+  { id = "boat-hdg-disp", type = "display", pos = [240, 120] },
+  { id = "dist-disp", type = "display", pos = [260, 460] },
+  { id = "in-nogo-disp", type = "display", pos = [260, 520] },
+  { id = "app-wind-disp", type = "display", pos = [600, 120] },
+  { id = "yaw-rate-disp", type = "display", pos = [40, 280] },
+  { id = "err-graph", type = "graph", pos = [660, 300] },
+  { id = "rudder-graph", type = "graph", pos = [1020, 440] },
+  { id = "sail-graph", type = "graph", pos = [960, 120] },
 ]
+
 edges = [
-  { from = ["wind-1", "direction"], to = ["sum-app", "a"] },
-  { from = ["boat-1", "heading"], to = ["sum-app", "b"] },
-  { from = ["sum-app", "y"], to = ["gain-trim", "u"] },
-  { from = ["gain-trim", "y"], to = ["sail-1", "trim_angle"] },
+  # Sail Aerodynamics
+  { from = ["wind-1", "direction"], to = ["app-diff", "a"] },
+  { from = ["boat-1", "heading"], to = ["app-diff", "b"] },
+  { from = ["app-diff", "y"], to = ["app-abs", "u"] },
+  { from = ["app-abs", "y"], to = ["app-deg", "u"] },
+  { from = ["app-deg", "y"], to = ["trim-gain", "u"] },
+  { from = ["trim-gain", "y"], to = ["trim-clamp", "u"] },
+  { from = ["trim-clamp", "y"], to = ["sail-1", "trim_angle"] },
+  { from = ["trim-clamp", "y"], to = ["sail-disp", "in"] },
+  { from = ["trim-clamp", "y"], to = ["sail-graph", "in"] },
+
+  # Autopilot Guidance & Steering
+  { from = ["tr-1", "bearing"], to = ["tack-1", "bearing"] },
+  { from = ["tr-1", "dist"], to = ["tack-1", "dist"] },
   { from = ["tr-1", "in_nogo"], to = ["tack-1", "in_nogo"] },
-  { from = ["tack-1", "error"], to = ["pid-1", "e"] },
-  { from = ["pid-1", "u"], to = ["rudder-1", "turn"] },
+  { from = ["shore-1", "dist_shore"], to = ["tack-1", "dist_shore"] },
+  { from = ["wind-1", "direction"], to = ["tack-1", "wind_dir"] },
+  { from = ["tack-1", "target_hdg"], to = ["err-diff", "a"] },
+  { from = ["boat-1", "heading"], to = ["err-diff", "b"] },
+  { from = ["err-diff", "y"], to = ["pid-1", "e"] },
+
+  # Manual Keyboard Overrides & Summing
+  { from = ["key-right", "pressed"], to = ["sum-manual", "a"] },
+  { from = ["key-left", "pressed"], to = ["sum-manual", "b"] },
+  { from = ["sum-manual", "y"], to = ["gain-manual", "u"] },
+  { from = ["pid-1", "u"], to = ["sum-rudder", "a"] },
+  { from = ["gain-manual", "y"], to = ["sum-rudder", "b"] },
+  { from = ["sum-rudder", "y"], to = ["sat-rudder", "u"] },
+  { from = ["sat-rudder", "y"], to = ["rudder-1", "turn"] },
+  { from = ["sat-rudder", "y"], to = ["rudder-disp", "in"] },
+  { from = ["sat-rudder", "y"], to = ["rudder-graph", "in"] },
+
+  # Helm Telemetry Wiring
   { from = ["boat-1", "speed"], to = ["speed-gauge", "in"] },
+  { from = ["boat-1", "speed"], to = ["speed-graph", "in"] },
+  { from = ["boat-1", "heel"], to = ["heel-gauge", "in"] },
+  { from = ["boat-1", "heel"], to = ["heel-graph", "in"] },
+  { from = ["boat-1", "coins"], to = ["coins-disp", "in"] },
+  { from = ["shore-1", "dist_shore"], to = ["shore-disp", "in"] },
+
+  # Navigation Telemetry Wiring
+  { from = ["tack-1", "target_hdg"], to = ["target-hdg-disp", "in"] },
+  { from = ["boat-1", "heading"], to = ["boat-hdg-disp", "in"] },
+  { from = ["tr-1", "dist"], to = ["dist-disp", "in"] },
+  { from = ["tr-1", "in_nogo"], to = ["in-nogo-disp", "in"] },
+  { from = ["app-deg", "y"], to = ["app-wind-disp", "in"] },
+  { from = ["boat-1", "yaw_rate"], to = ["yaw-rate-disp", "in"] },
+  { from = ["err-diff", "y"], to = ["err-graph", "in"] },
 ]
