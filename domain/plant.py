@@ -143,6 +143,7 @@ class PaperboatGame(DomainState):
         return [
             {"id": "ship", "pos": [self.x, 0.45, self.z], "rot": [0, -self.heading, self.heel],
              "speed": self.speed, "sail_angle": self.sail_angle, "rudder": self.rudder,
-             "coins": self.coins_collected, "chest_collected": self.chest_collected},
+             "coins": self.coins_collected, "chest_collected": self.chest_collected,
+             "wind_dir": self.wind_dir, "wind_speed": self.wind_speed},
             {"id": "chest", "pos": [self.chest_x, 0.35, self.chest_z], "collected": self.chest_collected}
         ]

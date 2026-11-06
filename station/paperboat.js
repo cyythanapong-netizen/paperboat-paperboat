@@ -32,6 +32,9 @@
   const lootCoins = document.getElementById("lootCoins");
   const lootChest = document.getElementById("lootChest");
   const statusBadge = document.getElementById("statusBadge");
+  const sailBoomGroupSvg = document.getElementById("sailBoomGroupSvg");
+  const sailAppWindGroup = document.getElementById("sailAppWindGroup");
+  const hudSailTack = document.getElementById("hudSailTack");
 
   // Local state
   const state = {
@@ -237,12 +240,17 @@
   hullMesh.castShadow = true;
   paperboatGroup.add(hullMesh);
 
-  // Sail
-  const sailApex = [0.05, 2.2, 0.0];
-  const sailBaseBow = [0.65, 0.5, 0.0];
-  const sailBaseStern = [-0.65, 0.5, 0.0];
-  const sailPortFoot = [0.0, 0.55, 0.75];
-  const sailStbdFoot = [0.0, 0.55, -0.75];
+  // 3D Sail Boom Group (pivoting on mast at x=0.05, y=0.0, z=0.0)
+  const sailBoomGroup = new THREE.Group();
+  sailBoomGroup.position.set(0.05, 0.0, 0.0);
+  paperboatGroup.add(sailBoomGroup);
+
+  // Sail vertices local to sailBoomGroup (mast is at local 0,0,0)
+  const sailApex = [0.0, 2.2, 0.0];
+  const sailBaseBow = [0.60, 0.5, 0.0];
+  const sailBaseStern = [-0.70, 0.5, 0.0];
+  const sailPortFoot = [-0.05, 0.55, 0.75];
+  const sailStbdFoot = [-0.05, 0.55, -0.75];
 
   const portSailPositions = [];
   addTri(portSailPositions, sailApex, sailPortFoot, sailBaseBow);
@@ -252,19 +260,19 @@
   portSailGeom.computeVertexNormals();
   const portSailMesh = new THREE.Mesh(portSailGeom, sailLitMat);
   portSailMesh.castShadow = true;
-  paperboatGroup.add(portSailMesh);
+  sailBoomGroup.add(portSailMesh);
 
   const stbdSailPositions = [];
   addTri(stbdSailPositions, sailApex, sailBaseBow, sailStbdFoot);
-  addTri(stbdSailPositions, sailApex, sailBaseStern, sailPortFoot);
+  addTri(stbdSailPositions, sailApex, sailBaseStern, sailStbdFoot);
   const stbdSailGeom = new THREE.BufferGeometry();
   stbdSailGeom.setAttribute("position", new THREE.Float32BufferAttribute(stbdSailPositions, 3));
   stbdSailGeom.computeVertexNormals();
   const stbdSailMesh = new THREE.Mesh(stbdSailGeom, sailShadeMat);
   stbdSailMesh.castShadow = true;
-  paperboatGroup.add(stbdSailMesh);
+  sailBoomGroup.add(stbdSailMesh);
 
-  // Central crease line
+  // Central crease line (Mast)
   const mastMesh = new THREE.Mesh(
     new THREE.CylinderGeometry(0.015, 0.015, 1.8, 4),
     new THREE.MeshBasicMaterial({ color: 0x2e2e2e })
@@ -519,6 +527,8 @@
         if (shipEnt.sail_angle !== undefined) state.ship.sailAngle = shipEnt.sail_angle;
         if (shipEnt.coins !== undefined) state.ship.coins = shipEnt.coins;
         if (shipEnt.chest_collected !== undefined) state.ship.chestCollected = shipEnt.chest_collected;
+        if (shipEnt.wind_dir !== undefined) state.wind.dir = shipEnt.wind_dir;
+        if (shipEnt.wind_speed !== undefined) state.wind.speed = shipEnt.wind_speed;
       }
       const chestEnt = paperboat.entities.get("chest");
       if (chestEnt && chestEnt.pos) {
@@ -528,6 +538,22 @@
       }
     }
 
+    // Apparent Wind & Sail Trim Physics
+    function wrapAngle(a) {
+      while (a > Math.PI) a -= 2 * Math.PI;
+      while (a < -Math.PI) a += 2 * Math.PI;
+      return a;
+    }
+    const relWind = wrapAngle(state.wind.dir - state.ship.heading);
+    // If relWind > 0 (wind blowing from starboard): boom trims to Port (+Z in Three.js, -rotation.y)
+    // If relWind <= 0 (wind blowing from port): boom trims to Starboard (-Z in Three.js, +rotation.y)
+    const isPortTack = Math.sin(relWind) > 0;
+    const boomTrimDeg = Math.min(80, Math.max(10, state.ship.sailAngle));
+    const boomTrimRad = (boomTrimDeg * Math.PI) / 180;
+    // 3D sail boom rotation around mast
+    const boom3DYaw = (isPortTack ? -1 : 1) * boomTrimRad * 0.45;
+    sailBoomGroup.rotation.y = boom3DYaw;
+
     // Telemetry updates
     if (hudSpeed) hudSpeed.textContent = Math.round(state.ship.speed);
     if (hudSailAngle) hudSailAngle.textContent = `${Math.round(state.ship.sailAngle)}°`;
@@ -536,6 +562,25 @@
     if (lootCoins) lootCoins.textContent = state.ship.coins;
     if (lootChest) lootChest.textContent = Math.floor(state.ship.coins / 25);
     if (windNeedleBox) windNeedleBox.style.transform = `rotate(${(state.wind.dir * 180) / Math.PI}deg)`;
+
+    // Sail Direction HUD Dial & Badge
+    if (sailBoomGroupSvg) {
+      // Boom swinging to Port (-angle in SVG), Starboard (+angle in SVG)
+      const boomSvgAngle = isPortTack ? -boomTrimDeg : boomTrimDeg;
+      sailBoomGroupSvg.setAttribute("transform", `rotate(${boomSvgAngle} 32 28)`);
+    }
+
+    if (sailAppWindGroup) {
+      // Relative wind direction in dial: relative to boat heading
+      const relWindDeg = (relWind * 180) / Math.PI;
+      sailAppWindGroup.setAttribute("transform", `rotate(${relWindDeg} 32 32)`);
+    }
+
+    if (hudSailTack) {
+      const tackSide = isPortTack ? "PORT" : "STBD";
+      hudSailTack.textContent = `${tackSide} ${Math.round(boomTrimDeg)}°`;
+      hudSailTack.className = `sail-tack-badge ${isPortTack ? "port" : "stbd"}`;
+    }
 
     // Dynamic Multi-Frequency Wave Vertices with Trochoidal Wake
     for (let i = 0; i < waterPosAttr.count; i++) {

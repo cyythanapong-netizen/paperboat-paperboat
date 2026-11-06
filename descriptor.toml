@@ -24,9 +24,11 @@ instruments = [
   { block = "speed-gauge", size = "compact", at = [0, 1], tab = "Helm" },
   { block = "sail-disp", size = "compact", at = [1, 1], tab = "Helm" },
   { block = "rudder-disp", size = "compact", at = [2, 1], tab = "Helm" },
+  { block = "mode-switch", size = "compact", at = [3, 1], tab = "Helm" },
   { block = "heel-gauge", size = "compact", at = [0, 2], tab = "Helm" },
   { block = "coins-disp", size = "compact", at = [1, 2], tab = "Helm" },
   { block = "shore-disp", size = "compact", at = [2, 2], tab = "Helm" },
+  { block = "manual-override", size = "compact", at = [3, 2], tab = "Helm" },
   { block = "speed-graph", size = "large", at = [0, 3], tab = "Helm" },
   { block = "heel-graph", size = "large", at = [2, 3], tab = "Helm" },
 
@@ -79,10 +81,13 @@ nodes = [
   { id = "sum-manual", type = "sum", params = { signs = "+-" }, pos = [660, 540] },
   { id = "gain-manual", type = "gain", params = { k = 1.0 }, pos = [800, 540] },
 
-  # Rudder Actuation & Limits
-  { id = "sum-rudder", type = "sum", params = { signs = "++" }, pos = [860, 380] },
-  { id = "sat-rudder", type = "saturation", params = { min = -1.0, max = 1.0 }, pos = [1020, 380] },
-  { id = "rudder-1", type = "rudder", pos = [1180, 380] },
+  # Steering Control Selector (Switch instruments: Toggle & Momentary)
+  { id = "mode-switch", type = "switch", params = { mode = "toggle", initial = 1.0 }, pos = [660, 460] },
+  { id = "manual-override", type = "switch", params = { mode = "momentary", initial = 0.0 }, pos = [660, 520] },
+  { id = "sub-mode", type = "sum", params = { signs = "+-" }, pos = [800, 480] },
+  { id = "if-mode", type = "if", pos = [960, 380] },
+  { id = "sat-rudder", type = "saturation", params = { min = -1.0, max = 1.0 }, pos = [1100, 380] },
+  { id = "rudder-1", type = "rudder", pos = [1260, 380] },
 
   # Dashboard Helm Monitors
   { id = "speed-gauge", type = "display", pos = [240, 180] },
@@ -128,13 +133,16 @@ edges = [
   { from = ["boat-1", "heading"], to = ["err-diff", "b"] },
   { from = ["err-diff", "y"], to = ["pid-1", "e"] },
 
-  # Manual Keyboard Overrides & Summing
+  # Steering Mode Selection & Control Switching
   { from = ["key-right", "pressed"], to = ["sum-manual", "a"] },
   { from = ["key-left", "pressed"], to = ["sum-manual", "b"] },
   { from = ["sum-manual", "y"], to = ["gain-manual", "u"] },
-  { from = ["pid-1", "u"], to = ["sum-rudder", "a"] },
-  { from = ["gain-manual", "y"], to = ["sum-rudder", "b"] },
-  { from = ["sum-rudder", "y"], to = ["sat-rudder", "u"] },
+  { from = ["mode-switch", "y"], to = ["sub-mode", "a"] },
+  { from = ["manual-override", "y"], to = ["sub-mode", "b"] },
+  { from = ["sub-mode", "y"], to = ["if-mode", "cond"] },
+  { from = ["pid-1", "u"], to = ["if-mode", "a"] },
+  { from = ["gain-manual", "y"], to = ["if-mode", "b"] },
+  { from = ["if-mode", "y"], to = ["sat-rudder", "u"] },
   { from = ["sat-rudder", "y"], to = ["rudder-1", "turn"] },
   { from = ["sat-rudder", "y"], to = ["rudder-disp", "in"] },
   { from = ["sat-rudder", "y"], to = ["rudder-graph", "in"] },
