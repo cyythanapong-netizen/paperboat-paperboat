@@ -1,0 +1,42 @@
+# Paperboat Voyager: 3D pixel sailing showcase on Scheme C Mediterranean Azure.
+domain = "voyager"
+
+# Reusable toolkit package imports
+import = ["base", "math", "control", "dashboard"]
+
+# Webview Station declaration
+[station]
+view = "web"
+page = "station/index.html"
+
+# Default pre-tuned PID controller
+[[blocks]]
+use = "control/pid"
+defaults = { kp = 2.2, ki = 0.02, kd = 0.5 }
+
+# Starter Graph: Closed-Loop Sail Trim & Upwind Tacking Autopilot
+[graph]
+nodes = [
+  { id = "wind-1", type = "wind", pos = [20, 20] },
+  { id = "boat-1", type = "boat", pos = [20, 160] },
+  { id = "sum-app", type = "sum", params = { signs = "+-" }, pos = [220, 20] },
+  { id = "gain-trim", type = "gain", params = { k = 0.5 }, pos = [420, 20] },
+  { id = "sail-1", type = "sail", pos = [620, 20] },
+  { id = "tr-1", type = "treasure", pos = [220, 200] },
+  { id = "tack-1", type = "tack_generator", pos = [420, 200] },
+  { id = "pid-1", type = "pid", pos = [620, 200] },
+  { id = "rudder-1", type = "rudder", pos = [820, 200] },
+  { id = "speed-gauge", type = "display", pos = [220, 360] },
+  { id = "key-left", type = "key", params = { key = "ArrowLeft" }, pos = [420, 360] },
+  { id = "key-right", type = "key", params = { key = "ArrowRight" }, pos = [620, 360] },
+]
+edges = [
+  { from = ["wind-1", "direction"], to = ["sum-app", "a"] },
+  { from = ["boat-1", "heading"], to = ["sum-app", "b"] },
+  { from = ["sum-app", "y"], to = ["gain-trim", "u"] },
+  { from = ["gain-trim", "y"], to = ["sail-1", "trim_angle"] },
+  { from = ["tr-1", "in_nogo"], to = ["tack-1", "in_nogo"] },
+  { from = ["tack-1", "error"], to = ["pid-1", "e"] },
+  { from = ["pid-1", "u"], to = ["rudder-1", "turn"] },
+  { from = ["boat-1", "speed"], to = ["speed-gauge", "in"] },
+]

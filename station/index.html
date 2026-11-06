@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Paperboat Voyager Station</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="_static/three.min.js"></script>
+  </head>
+  <body>
+    <div id="stationContainer">
+      <canvas id="threeCanvas"></canvas>
+
+      <!-- Sea HUD Overlay -->
+      <div class="sea-hud">
+        <div class="hud-top">
+          <div class="loot-manifest">
+            <span class="loot-item loot-coins">🪙 <span id="lootCoins">0</span></span>
+            <span class="loot-item loot-chest">📦 <span id="lootChest">0</span> / 1</span>
+          </div>
+
+          <div id="statusBadge">Ready</div>
+
+          <div class="wind-compass">
+            <span class="compass-label comp-n">N</span>
+            <span class="compass-label comp-s">S</span>
+            <span class="compass-label comp-w">W</span>
+            <span class="compass-label comp-e">E</span>
+            <div class="wind-arrow-box" id="windNeedleBox">
+              <div class="wind-needle"></div>
+            </div>
+            <div class="wind-readout" id="windReadout">NW 14 kt</div>
+          </div>
+        </div>
+
+        <div class="hud-right-telemetry">
+          <div class="speed-gauge">
+            <div class="speed-val" id="hudSpeed">0</div>
+            <div class="speed-unit">KNOTS</div>
+          </div>
+          <div class="sail-slider-wrap">
+            <span class="sail-label">SAIL</span>
+            <div class="sail-track">
+              <div class="sail-thumb" id="sailThumb"></div>
+            </div>
+            <span class="sail-angle-text" id="hudSailAngle">42°</span>
+          </div>
+        </div>
+
+        <div class="hud-bottom">
+          <div class="captain-plate">
+            <div class="captain-name">Paperboat Voyager</div>
+            <div class="captain-sub">Scheme C · Mediterranean Azure</div>
+          </div>
+
+          <div class="helm-box">
+            <div class="helm-wheel" id="helmWheel"></div>
+            <span class="helm-label">RUDDER</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/paperboat/station.js"></script>
+    <script src="voyager.js"></script>
+  </body>
+</html>

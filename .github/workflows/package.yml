@@ -1,0 +1,75 @@
+name: Verify & Package Backend
+
+on:
+  push:
+    branches: [ main, dev ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, dev ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout backend repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install jsonschema tomli
+
+      - name: Verify backend layout & manifest
+        run: |
+          python3 -c "
+          import tomllib, os
+          with open('backend.toml', 'rb') as f:
+              data = tomllib.load(f)
+          b = data['backend']
+          assert b['format'] == 0, f'Expected format 0, got {b[\"format\"]}'
+          assert b['name'] == 'paperboat-paperboat'
+          assert b['language'] == 'python'
+          assert os.path.isfile(b['descriptor'])
+          assert os.path.isfile(b['run'])
+          print('backend.toml manifest verified successfully.')
+          "
+
+      - name: Package backend archive (.paperboat-pkg)
+        run: |
+          python3 scripts/package_backend.py pack .
+          ls -la *.paperboat-pkg
+          sha256sum *.paperboat-pkg > checksums.txt
+          cat checksums.txt
+
+      - name: Verify package unpack & integrity
+        run: |
+          PKG_FILE=$(ls *.paperboat-pkg | head -n 1)
+          python3 scripts/package_backend.py unpack "$PKG_FILE" --dir /tmp/test_unpack
+          echo "Verified $PKG_FILE extraction and SHA-256 integrity"
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: paperboat-package
+          path: |
+            *.paperboat-pkg
+            checksums.txt
+
+      - name: Publish Release Assets
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.paperboat-pkg
+            checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,12 @@
+[backend]
+format = 0
+name = "paperboat-paperboat"
+version = "0.1.0"
+engine = ">=0.1"
+language = "python"
+run = "server.py"
+port = 8774
+descriptor = "descriptor.toml"
+
+[test]
+golden = "expected.json"
